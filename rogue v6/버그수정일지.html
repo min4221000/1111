@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>30 Floors — 버그 수정 일지 v6.1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    padding: 40px 30px;
+    min-width: 900px;
+  }
+
+  .title-bar {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .title-bar h1 { font-size: 1.9rem; font-weight: 700; color: #f0c040; letter-spacing: 2px; }
+  .title-bar p  { color: #8b949e; margin-top: 6px; font-size: 0.88rem; }
+  .version-badge {
+    display: inline-block;
+    margin-top: 10px;
+    background: #1a2a1a;
+    border: 1.5px solid #10b981;
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 0.8rem;
+    color: #34d399;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 38px;
+    flex-wrap: wrap;
+  }
+  .stat-box {
+    background: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 10px;
+    padding: 12px 22px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .stat-box .num  { font-size: 1.8rem; font-weight: 700; }
+  .stat-box .lbl  { font-size: 0.7rem; color: #8b949e; margin-top: 3px; }
+  .s-crit  { border-color: #ef4444; } .s-crit  .num { color: #f87171; }
+  .s-med   { border-color: #f59e0b; } .s-med   .num { color: #fbbf24; }
+  .s-minor { border-color: #3b82f6; } .s-minor .num { color: #60a5fa; }
+  .s-des   { border-color: #10b981; } .s-des   .num { color: #34d399; }
+
+  .bug-card {
+    background: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 12px;
+    padding: 22px 26px;
+    margin-bottom: 18px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+  }
+  .bug-card.v6 { border-color: #10b98140; }
+
+  .bug-num  {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #30363d;
+    font-family: monospace;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .severity {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+  .sev-critical { background: #2d0a0a; color: #f87171; border: 1px solid #ef4444; }
+  .sev-medium   { background: #2d1a00; color: #fbbf24; border: 1px solid #f59e0b; }
+  .sev-minor    { background: #0a1a2d; color: #60a5fa; border: 1px solid #3b82f6; }
+  .sev-design   { background: #0a1a0f; color: #34d399; border: 1px solid #10b981; }
+
+  .bug-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #e6edf3;
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  .bug-file {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #8b949e;
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    color: #8b949e;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    margin-top: 12px;
+  }
+  .section-label:first-child { margin-top: 0; }
+  .desc {
+    font-size: 0.85rem;
+    color: #c9d1d9;
+    line-height: 1.65;
+  }
+
+  .code-block {
+    margin-top: 6px;
+    border-radius: 8px;
+    overflow: hidden;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+  .code-before { background: #2d0a0a; padding: 10px 14px; }
+  .code-after  { background: #0a1a0f; padding: 10px 14px; }
+  .code-before .lbl { color: #f87171; font-size: 0.65rem; margin-bottom: 4px; }
+  .code-after  .lbl { color: #34d399; font-size: 0.65rem; margin-bottom: 4px; }
+  .code-before code { color: #fca5a5; }
+  .code-after  code { color: #6ee7b7; }
+
+  .code-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .result-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .result-badge {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #0a1a0f;
+    color: #34d399;
+    border: 1px solid #10b981;
+  }
+
+  hr { border: none; border-top: 1px solid #21262d; margin: 28px 0; }
+
+  .section-header {
+    color: #8b949e;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 32px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-header::before, .section-header::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid #21262d;
+  }
+
+  .version-header {
+    text-align: center;
+    margin: 48px 0 24px;
+    padding: 14px 24px;
+    background: #0a1a0f;
+    border: 1.5px solid #10b981;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #34d399;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="title-bar">
+  <h1>🐛 버그 수정 일지</h1>
+  <p>Claude AI와의 협업으로 발견·수정된 버그 및 설계 변경 기록</p>
+  <div class="version-badge">CURRENT: v6.2</div>
+</div>
+
+<div class="stats">
+  <div class="stat-box s-crit">  <div class="num">3</div><div class="lbl">CRITICAL</div></div>
+  <div class="stat-box s-med">   <div class="num">5</div><div class="lbl">MEDIUM</div></div>
+  <div class="stat-box s-minor"> <div class="num">9</div><div class="lbl">MINOR</div></div>
+  <div class="stat-box s-des">   <div class="num">19</div><div class="lbl">DESIGN CHANGE</div></div>
+</div>
+
+
+<!-- ══════════ v5 원본 ══════════ -->
+<div class="version-header">── v5 원본 (100 Floors → 30 Floors) ──</div>
+
+<div class="section-header">Critical Bugs</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#01</div>
+    <span class="severity sev-critical">CRITICAL</span>
+    <div class="bug-title">패턴 인덱스 오류<br>— 30층 보스 첫 턴 즉사</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">발견 경위</div>
+    <div class="desc">코드 리뷰 중 발견. 모든 몬스터가 패턴의 첫 번째 행동을 건너뛰고 있었음. 30층 보스(심연의 근원)는 패턴이 ["quick", "dark_slash", "aoe"]인데, 첫 턴에 dark_slash(2배 데미지)가 발동 → 파티 즉사 수준.</div>
+    <div class="section-label">원인</div>
+    <div class="desc">turn이 1부터 시작하므로 <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">turn % len(pattern)</code>은 index 1부터 계산. pattern[0]은 게임 내내 두 번에 한 번만 등장.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>pattern[turn % len(pattern)]</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>pattern[(turn - 1) % len(pattern)]</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">패턴 시작 index 0 보장</span><span class="result-badge">보스전 밸런스 정상화</span></div>
+  </div>
+</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#02</div>
+    <span class="severity sev-critical">CRITICAL</span>
+    <div class="bug-title">aoe 실제 데미지와<br>인텐트 표시 불일치</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">원인</div>
+    <div class="desc">fire_aoe와 aoe가 같은 if 블록에서 처리되어 두 행동 모두 0.7배 고정. aoe 인텐트 표시는 1.1배로 작성되어 있었음.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>if action in ("fire_aoe", "aoe"):<br>  dmg = _calc_dmg(monster, c, 0.7)</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>if action == "fire_aoe": mult=0.7<br>if action == "aoe": mult=1.1</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">인텐트 시스템 신뢰성 회복</span></div>
+  </div>
+</div>
+
+<div class="section-header">Medium Bugs</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#03</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">기절 걸어도<br>적이 공격하는 현상 (UX)</div>
+    <div class="bug-file">combat.py · assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">원인</div>
+    <div class="desc">번개화살 50% 확률이 카드 설명에 미기재. 실패 메시지가 dim yellow 1.2초 후 화면 클리어로 보이지 않음. monster_first 타이밍 오해.</div>
+    <div class="result-row"><span class="result-badge">확률 정보 명시</span><span class="result-badge">실패 피드백 가시성 향상</span></div>
+  </div>
+</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#04</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">적 턴 넘어가는<br>현상 (설계 한계)</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">원인</div>
+    <div class="desc">monster_first=True 시 공격 메시지 후 draw_combat_screen()으로 화면 클리어 → 공격 장면을 못 보는 UX 문제. 코드 버그 아님.</div>
+    <div class="result-row"><span class="result-badge">설계 한계 확인 (수정 불필요)</span></div>
+  </div>
+</div>
+
+<div class="section-header">Minor Bugs</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#05</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">"100 FLOORS" 표기 오류</div>
+    <div class="bug-file">visuals.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">게임은 30층이지만 헤더에 "100 FLOORS"로 표기됨.</div>
+    <div class="result-row"><span class="result-badge">"30 FLOORS"로 수정</span></div>
+  </div>
+</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#06</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">input() / console.input() 혼용</div>
+    <div class="bug-file">world.py · player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">combat.py는 rich의 console.input()을 쓰지만 world.py/player.py 일부에서 bare input() 사용. 스타일 불일치.</div>
+    <div class="result-row"><span class="result-badge">전체 console.input()으로 통일</span></div>
+  </div>
+</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">#07</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">이식성 부재<br>(requirements 없음)</div>
+    <div class="bug-file">프로젝트 루트</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">requirements.txt, .gitignore 미존재. 타 환경 실행 불가, __pycache__ 업로드 위험.</div>
+    <div class="result-row"><span class="result-badge">requirements.txt 생성</span><span class="result-badge">.gitignore 생성</span></div>
+  </div>
+</div>
+
+<div class="section-header">Design Changes (v5)</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">D1</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">공용 카드 획득 경로 재설계</div>
+    <div class="bug-file">combat.py · world.py · assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">전투 보상에서 공용 카드 완전 제거 → 특정 사건(이벤트)에서만 획득. 4개 이벤트 신규 추가.</div>
+    <div class="result-row">
+      <span class="result-badge">떠돌이 약초상 → 해독제 (20G)</span>
+      <span class="result-badge">명상하는 수도승 → 집중 (무료)</span>
+      <span class="result-badge">비밀 통로 → 긴급 교대 (무료)</span>
+      <span class="result-badge">마력의 샘 → 마나 회복 (HP -10)</span>
+    </div>
+  </div>
+</div>
+
+<div class="bug-card">
+  <div class="bug-left">
+    <div class="bug-num">D2</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">퀵 스왑 덱 사이클링<br>— 의도된 기능으로 확정</div>
+    <div class="bug-file">player.py · combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">스왑 시 draw_cards() 호출로 덱 순환 가능. 의도치 않은 부산물이나 전략적 요소로 인정.</div>
+    <div class="result-row"><span class="result-badge">의도된 전략 요소로 확정</span><span class="result-badge">코드 수정 없음</span></div>
+  </div>
+</div>
+
+
+<!-- ══════════ v6 신규 ══════════ -->
+<div class="version-header">── v6 신규 (v5 → v6 업데이트) ──</div>
+
+<div class="section-header">Critical Bugs (v6)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#08</div>
+    <span class="severity sev-critical">CRITICAL</span>
+    <div class="bug-title">전투 시작 즉시 사망 시<br>조작 불능 버그</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">몬스터 선공(monster_first=True) → 캐릭터가 첫 공격에 사망 → 자동 스왑 발생 → 새 캐릭터로 전환되었으나 손패 없음. 카드 사용 불가, "턴 종료" 버튼만 활성화됨.</div>
+    <div class="section-label">원인</div>
+    <div class="desc">
+      run_combat() 턴 시작 시 <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">player.draw_cards(active, 4)</code>를 전방 캐릭터(A)에게 호출.
+      이후 몬스터가 A를 처치 → _check_player_alive()가 B로 자동 스왑 → _player_turn_logic() 진입.
+      B의 hand는 []이므로 카드 선택 불가.
+    </div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE (버그)</div><code>_monster_turn_logic(...)<br>if not _check_player_alive(player):<br>    return False<br># B의 hand = [] → 카드 불가</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER (수정)</div><code>prev_index = player.active_index<br>_monster_turn_logic(...)<br>if not _check_player_alive(player):<br>    return False<br>if player.active_index != prev_index:<br>    player.draw_cards(player.active_char, 4)</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">긴급 스왑 후 카드 드로우 보장</span><span class="result-badge">조작 불능 상태 해소</span></div>
+  </div>
+</div>
+
+<div class="section-header">Medium Bugs (v6)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#09</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">동점 SPD 메시지 오류</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">플레이어와 몬스터 SPD가 같을 때 "내가 더 빠릅니다!" 메시지 출력. 같은 수치를 보여주면서 "더 빠르다"고 표시되어 혼란.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>else:<br>  msg = "내가 더 빠릅니다!"<br># 동점도 여기서 처리됨</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>elif monster_spd == active_spd:<br>  msg = "속도가 같습니다! 선공 우선"<br>else:<br>  msg = "내가 더 빠릅니다!"</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">동점 시 별도 메시지 표시</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#10</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">ai_manager.py 함수<br>전혀 호출 안 됨</div>
+    <div class="bug-file">world.py · ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">get_battle_intro(), get_event_narrative(), get_narrative() 세 함수가 완성되어 있으나 world.py에서 import조차 안 됨. 몬스터 개별 대사(speech 필드)도 assets.py에 정의되어 있으나 출력 코드 없음.</div>
+    <div class="section-label">수정</div>
+    <div class="desc">world.py에 import ai_manager 추가. handle_combat()에 speech 출력 + get_battle_intro() 호출. handle_random_event()에 get_event_narrative() 호출.</div>
+    <div class="result-row">
+      <span class="result-badge">몬스터 대사 출력 연결</span>
+      <span class="result-badge">전투 시작 AI 내레이션</span>
+      <span class="result-badge">사건 결과 AI 묘사</span>
+    </div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#11</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">힐로 부활 시<br>과충전 에너지 버그</div>
+    <div class="bug-file">player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">파트너가 사망해도 후방 에너지 충전 로직이 그대로 실행되어 사망한 캐릭터의 에너지가 계속 쌓임. 힐로 부활시키면 과충전 에너지를 그대로 들고 등장 — 의도치 않은 이득.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code># 사망 여부 무관하게 충전<br>back['current_energy'] = min(<br>  overcharge_cap,<br>  back['current_energy'] + 1<br>)</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code># 살아있을 때만 충전<br>if back['current_hp'] > 0:<br>    back['current_energy'] = min(<br>        overcharge_cap,<br>        back['current_energy'] + 1<br>    )</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">사망 중 에너지 충전 차단</span><span class="result-badge">부활 후 과충전 방지</span></div>
+  </div>
+</div>
+
+<div class="section-header">Minor Bugs (v6)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#12</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">상점 소유 유물<br>중복 표시</div>
+    <div class="bug-file">world.py · assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">get_stage_relics()가 플레이어가 이미 보유한 유물도 상점에 표시. 이미 가진 아이템을 다시 살 수 없어서 슬롯만 낭비.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>buyable = [r for r in RELICS.values()<br>           if r["stage"] == stage]</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>buyable = [r for r in RELICS.values()<br>           if r["stage"] == stage<br>           and r["name"] not in exclude]</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">소유 유물 상점 풀에서 제외</span><span class="result-badge">매진 시 "⚠️ 매진!" 표시</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#13</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">AI ping 테스트로<br>무료 할당량 낭비</div>
+    <div class="bug-file">ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">게임 시작 시 Gemini API에 ping 1회 호출. 무료 tier 일 1,500회 제한에서 매 게임 시작마다 1회 소모. ping 실패 시 AI 완전 비활성화되어 유효한 API 키도 못 씀.</div>
+    <div class="result-row"><span class="result-badge">ping 테스트 제거</span><span class="result-badge">오류 시 자동 fallback으로 처리</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#14</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">AI 오류 원인 불투명<br>(except Exception: pass)</div>
+    <div class="bug-file">ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">초기화/호출 실패 시 모든 Exception을 묵살. 어떤 오류인지 알 수 없어 디버깅 불가. 403/404/429 등 원인별 진단 메시지 없음.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>except Exception:<br>    AI_AVAILABLE = False</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>except Exception as e:<br>    print(f"원인: {e}")<br>    # 403/404/429 별도 안내</code></div>
+      </div>
+    </div>
+    <div class="result-row">
+      <span class="result-badge">403: 권한 없음 안내</span>
+      <span class="result-badge">404: 모델명 확인 안내</span>
+      <span class="result-badge">429: 할당량 초과 안내</span>
+    </div>
+  </div>
+</div>
+
+<div class="section-header">Design Changes (v6)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D3</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">카드 보상 랜덤 캐릭터 지급</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">전투 승리 시 카드 보상이 항상 전방 캐릭터(active_char)에게만 지급되던 것을 생존 캐릭터 중 랜덤으로 변경. 파티 전략 다양성 증가.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>char = player.active_char</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>alive = [c for c in player.party<br>         if c['current_hp'] > 0]<br>char = random.choice(alive)</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">전방 고정 → 생존자 랜덤 지급</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D4</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">골드 보상 최소 20G 보장</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">전투 보상 골드가 ±20% 변동으로 15G × 0.8 = 12G까지 내려갈 수 있었음. 상점 물가(40~160G) 대비 경제 불균형. 최소 20G로 하한 설정.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>gold = random.randint(<br>  int(base*0.8), int(base*1.2))</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>gold = max(20, random.randint(<br>  int(base*0.8), int(base*1.2)))</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">전투 보상 최소 20G 보장</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D5</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">마법사 기본 HP 상향</div>
+    <div class="bug-file">assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">마법사 HP 50 → 60. 전사(90) 대비 지나치게 낮아 첫 번째 광역기 한 방에 사망하는 경우 빈번. ATK 14, SPD 12로 스펙이 좋은 만큼 생존성 소폭 보완.</div>
+    <div class="result-row"><span class="result-badge">마법사 HP 50 → 60</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D6</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">캐릭터 정보창 SPD 수치 표시</div>
+    <div class="bug-file">player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">show_status() 테이블에 SPD 컬럼 없어서 선공/후공 판단 근거를 알 수 없었음. SPD 컬럼 추가로 전투 전략 정보 제공.</div>
+    <div class="result-row"><span class="result-badge">파티 현황에 SPD 컬럼 추가</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D7</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">상점 UI 개선</div>
+    <div class="bug-file">world.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">상점 진입 시 파티 HP 상태와 보유 유물 목록을 상단에 표시. HP 비율에 따라 색상 변화(초록/노랑/빨강). 모든 유물 구매 후 "매진" 메시지 표시.</div>
+    <div class="result-row">
+      <span class="result-badge">파티 HP 색상 표시</span>
+      <span class="result-badge">보유 유물 목록 표시</span>
+      <span class="result-badge">매진 시 ⚠️ 표시</span>
+    </div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D8</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">심연의 근원 광역기 빈도 조정</div>
+    <div class="bug-file">assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">최종 보스의 광역 공격(aoe) 빈도가 3턴 1회(33%)로 지나치게 높아 마법사가 파티 전투에서 생존 불가 수준. 4턴 1회(25%)로 약 25% 감소.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE (3턴 패턴)</div><code>["quick", "dark_slash", "aoe"]</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER (4턴 패턴)</div><code>["quick", "dark_slash", "normal", "aoe"]</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">aoe 빈도 33% → 25%</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D9</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">몬스터 대사 + AI 내레이션 연결</div>
+    <div class="bug-file">world.py · ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">assets.py에 각 몬스터·보스별 speech 대사가 정의되어 있었으나 출력 코드 없음. ai_manager.py 함수도 미연결 상태. 두 가지 모두 world.py에 연결 완료.</div>
+    <div class="section-label">전투 시작 출력 순서</div>
+    <div class="desc">
+      1. <code style="color:#fca5a5; background:#2d0a0a; padding:1px 4px; border-radius:3px">🌑 야생의 {이름}이(가) 나타났다!</code><br>
+      2. <code style="color:#fca5a5; background:#2d0a0a; padding:1px 4px; border-radius:3px">"킬킬, 이 던전은 내 구역이야!"</code>  ← speech (항상)<br>
+      3. <code style="color:#6ee7b7; background:#0a1a0f; padding:1px 4px; border-radius:3px">AI 내레이션 or fallback 대사</code>  ← get_battle_intro()
+    </div>
+    <div class="result-row">
+      <span class="result-badge">전투 시작 몬스터 대사 출력</span>
+      <span class="result-badge">AI 전투 내레이션 연결</span>
+      <span class="result-badge">사건 결과 AI 묘사 연결</span>
+    </div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D10</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">미사용 코드 전면 정리</div>
+    <div class="bug-file">visuals.py · ai_manager.py · player.py · combat.py · world.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">제거된 함수 (visuals.py)</div>
+    <div class="desc">
+      <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">roll_dice_animation()</code> — 정의만 되고 호출 없음<br>
+      <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">display_announcement()</code> — 정의만 되고 호출 없음<br>
+      <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">divider()</code> — 정의만 되고 호출 없음
+    </div>
+    <div class="section-label">제거된 미사용 import</div>
+    <div class="desc">
+      <b>visuals.py</b> — <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">import time, import random, import os</code> (삭제된 함수에서만 사용)<br>
+      <b>ai_manager.py</b> — <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">import time</code><br>
+      <b>player.py</b> — <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">import copy, Group</code><br>
+      <b>combat.py</b> — <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">Group</code><br>
+      <b>world.py</b> — <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">from rich import box</code>
+    </div>
+    <div class="result-row">
+      <span class="result-badge">미사용 함수 3개 제거</span>
+      <span class="result-badge">미사용 import 8개 제거</span>
+      <span class="result-badge">모든 import가 실제 사용됨</span>
+    </div>
+  </div>
+</div>
+
+<div class="version-header">── v6.1 추가 수정 ──</div>
+
+<div class="section-header">Medium Bugs (v6.1)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#15</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">후방 캐릭터 상태이상<br>틱 안 됨</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">광역기(독 안개, 광역 화염 등)로 후방 캐릭터에 화상/중독이 걸려도 턴 종료 시 데미지가 들어가지 않았음. 지속시간도 줄어들지 않아 영구 상태이상처럼 남아있었음.</div>
+    <div class="section-label">원인</div>
+    <div class="desc"><code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">process_turn_statuses()</code>를 전방 캐릭터에만 호출. 후방 캐릭터는 상태이상 처리 누락.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>process_turn_statuses(player.active_char)<br># 후방 처리 없음</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>back_char = player.party[1 - player.active_index]<br>process_turn_statuses(player.active_char)<br>...<br>process_turn_statuses(back_char)</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">후방 화상/중독 정상 처리</span><span class="result-badge">back_char 미리 저장 (스왑 후에도 올바른 대상 처리)</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#16</div>
+    <span class="severity sev-medium">MEDIUM</span>
+    <div class="bug-title">_apply_effect chance<br>독립 롤 버그</div>
+    <div class="bug-file">world.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">"떠돌이 상인의 짐수레" 선택 시 "50G 획득 / 30% 확률로 함정 HP -10"이 의도인데, 골드와 함정 HP가 각각 독립 30% 확률로 굴려져 70% 확률로 골드도 못 받았음.</div>
+    <div class="section-label">원인</div>
+    <div class="desc">effect 딕셔너리의 gold와 party_hp 처리 블록이 각자 <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">random.random()</code>을 별도로 호출.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>if 'gold' in effect:<br>  chance = effect.get('chance', 1.0)<br>  if random.random() &lt; chance:  # 별도 롤<br>      player.gold += effect['gold']</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>if 'gold' in effect:<br>  # chance 무관하게 항상 지급<br>  player.gold += effect['gold']</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">골드 항상 지급</span><span class="result-badge">chance는 party_hp(함정)에만 적용</span></div>
+  </div>
+</div>
+
+<div class="section-header">Minor Bugs (v6.1)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#17</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">과충전 완전 차단<br>(사망 시 에너지 0 유지)</div>
+    <div class="bug-file">player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">#11에서 사망 중 충전만 막았는데, 죽기 전 쌓인 에너지가 그대로 남아있었음. 힐로 부활 시 과충전 에너지 보유 상태로 복귀.<br>수정: 매 턴 reset_energy 호출 시 사망 중이면 에너지를 0으로 강제 초기화.</div>
+    <div class="result-row"><span class="result-badge">사망 중 매 턴 에너지 0 유지</span><span class="result-badge">부활 후 에너지 0에서 시작</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#18</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">get_monster_speech() 데드코드</div>
+    <div class="bug-file">assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">함수가 정의되어 있으나 어디서도 호출 안 됨. world.py에서 <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">monster.get('speech')</code>로 직접 접근. 제거.</div>
+    <div class="result-row"><span class="result-badge">함수 제거</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#19</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">main.py bare print/input</div>
+    <div class="bug-file">main.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">시작/종료 메시지와 층 입구 메뉴에서 bare print()/input() 사용. 나머지 파일은 모두 rich console.print()/console.input() 사용.</div>
+    <div class="result-row"><span class="result-badge">전체 console.print() / console.input()으로 통일</span></div>
+  </div>
+</div>
+
+<div class="section-header">Design Changes (v6.1)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D11</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">몬스터 SPD 스케일링 제거</div>
+    <div class="bug-file">assets.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">일반 몬스터 SPD가 층당 5%씩 증가해 10층 이후 거의 모든 몬스터가 플레이어보다 빠른 문제. 보스와 동일하게 base_spd 고정값 사용으로 변경.</div>
+    <div class="code-row">
+      <div class="code-block"><div class="code-before"><div class="lbl">▶ BEFORE</div><code>base["spd"] = int(base["base_spd"] * (1 + floor * 0.05))</code></div></div>
+      <div class="code-block"><div class="code-after"><div class="lbl">▶ AFTER</div><code>base["spd"] = base["base_spd"]  # 고정</code></div></div>
+    </div>
+    <div class="result-row"><span class="result-badge">SPD 스케일링 제거</span><span class="result-badge">보스/일반 몬스터 동일 기준</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D12</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">HP 색상 기준 통일</div>
+    <div class="bug-file">world.py · player.py · combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">세 군데의 HP 색상 기준이 달랐음. combat.py(25%/50%) 기준으로 통일. player.py show_status()에 중간 단계 노란색도 추가.</div>
+    <div class="result-row"><span class="result-badge">전체 25% 미만=빨강 / 50% 미만=노랑 / 이상=초록(흰색)</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D13</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">유물 효과 적용 코드 중복 제거</div>
+    <div class="bug-file">player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">add_relic()과 _check_synthesis() 안에 hp/atk/spd 루프가 동일하게 두 번 존재. _apply_relic_stats() 헬퍼 메서드로 통합. 덤으로 synthesis가 DYNAMIC_KEYS를 일부 누락하던 미묘한 불일치도 수정됨.</div>
+    <div class="result-row"><span class="result-badge">_apply_relic_stats() 헬퍼 추가</span><span class="result-badge">두 곳 모두 동일 로직 사용</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D14</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">config.py → ai_manager.py 통합</div>
+    <div class="bug-file">config.py (삭제) · ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">config.py는 ai_manager.py에서만 import됐음. 별도 파일 유지 이유가 없어 ai_manager.py 상단으로 API 키와 모델명 이동 후 config.py 삭제.</div>
+    <div class="result-row"><span class="result-badge">config.py 제거</span><span class="result-badge">API 키는 ai_manager.py 27번줄에서 관리</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D15</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">Gemini → OpenAI API 전환</div>
+    <div class="bug-file">ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">Gemini 무료 API가 할당량 초과(429) 문제로 실사용 불가. OpenAI gpt-4o-mini로 전환. 구 SDK(google.generativeai) → 신 SDK(google.genai) 마이그레이션 과정을 거쳤으나 근본적으로 OpenAI로 변경.</div>
+    <div class="result-row"><span class="result-badge">OpenAI gpt-4o-mini 사용</span><span class="result-badge">pip install openai</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D16</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">AI 내레이션 서술체 적용</div>
+    <div class="bug-file">ai_manager.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">AI 프롬프트에 '~다'로 끝나는 한국어 서술체 제약 추가. 기존엔 대화체나 혼용체로 나오는 경우가 있었음.</div>
+    <div class="result-row"><span class="result-badge">"반드시 '~다'로 끝나는 서술체" 제약 추가</span></div>
+  </div>
+</div>
+
+<div class="version-header">── v6.2 추가 수정 ──</div>
+
+<div class="section-header">Minor Bugs (v6.2)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">#20</div>
+    <span class="severity sev-minor">MINOR</span>
+    <div class="bug-title">합성 소모 유물<br>상점 재등장 버그</div>
+    <div class="bug-file">player.py · world.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="section-label">현상</div>
+    <div class="desc">"숫돌 + 연습용 목검 → 날카로운 비수" 합성 시 두 재료가 player.relics에서 제거됨. 상점은 현재 보유 유물(relics)만 보고 제외했기 때문에, 소모된 재료가 다시 상점에 나타남.</div>
+    <div class="section-label">원인</div>
+    <div class="desc">owned_names를 <code style="color:#fca5a5; background:#2d0a0a; padding:1px 5px; border-radius:3px">{r['name'] for r in player.relics}</code>로 계산 — 합성으로 제거된 유물은 포함 안 됨.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>owned_names = {r['name'] for r in player.relics}<br>shop_relics = get_stage_relics(..., exclude=owned_names)</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code># player.purchased_relics — 획득 이력 전체 추적<br>shop_relics = get_stage_relics(..., exclude=player.purchased_relics)</code></div>
+      </div>
+    </div>
+    <div class="result-row">
+      <span class="result-badge">purchased_relics set 추가 (player.py)</span>
+      <span class="result-badge">합성 소모 유물 상점 풀에서 영구 제외</span>
+    </div>
+  </div>
+</div>
+
+<div class="section-header">Design Changes (v6.2)</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D17</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">_check_synthesis<br>재귀 → while 루프</div>
+    <div class="bug-file">player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">연쇄 합성 처리를 위해 자기 자신을 재호출하던 재귀 구조를 while True / break 루프로 변경. 동작은 동일하나 코드 흐름이 선형적으로 읽힘. next(generator) 패턴도 일반 for 루프로 교체.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>def _check_synthesis(self):<br>    ...<br>    self._check_synthesis()  # 재귀<br>    return</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>def _check_synthesis(self):<br>    while True:<br>        found = False<br>        ...<br>        if not found: break</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">재귀 제거</span><span class="result-badge">next(generator) → for 루프</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D18</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">Counter → 일반 딕셔너리</div>
+    <div class="bug-file">player.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">show_detailed_status()의 카드 중복 집계에 collections.Counter를 사용했으나 기본 딕셔너리와 .get()으로 대체. Counter import 제거. 동작 동일.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>from collections import Counter<br>card_counts = Counter(c.get('deck', []))</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>card_counts = {}<br>for name in c.get('deck', []):<br>    card_counts[name] = card_counts.get(name, 0) + 1</code></div>
+      </div>
+    </div>
+    <div class="result-row"><span class="result-badge">Counter import 제거</span><span class="result-badge">기본 dict로 대체</span></div>
+  </div>
+</div>
+
+<div class="bug-card v6">
+  <div class="bug-left">
+    <div class="bug-num">D19</div>
+    <span class="severity sev-design">DESIGN</span>
+    <div class="bug-title">side_effects 딕셔너리<br>→ 문자열/None 반환</div>
+    <div class="bug-file">combat.py</div>
+  </div>
+  <div class="bug-right">
+    <div class="desc">_execute_card_effects()가 {'swap_free': True} 형태의 딕셔너리를 반환하고 호출부에서 .get()으로 키를 꺼내던 패턴을 단순화. swap_free면 문자열 'swap_free', 아니면 None 반환. 중복 active 할당 1줄도 함께 제거.</div>
+    <div class="code-row">
+      <div class="code-block">
+        <div class="code-before"><div class="lbl">▶ BEFORE</div><code>side_effects = {}<br>side_effects['swap_free'] = True<br>return side_effects<br>...<br>if side_effects and side_effects.get('swap_free'):</code></div>
+      </div>
+      <div class="code-block">
+        <div class="code-after"><div class="lbl">▶ AFTER</div><code>return 'swap_free'<br>return None<br>...<br>if result == 'swap_free':</code></div>
+      </div>
+    </div>
+    <div class="result-row">
+      <span class="result-badge">dict 반환 → 문자열/None 반환</span>
+      <span class="result-badge">중복 active 할당 제거</span>
+    </div>
+  </div>
+</div>
+
+<hr>
+<div style="text-align:center; color:#8b949e; font-size:0.8rem; padding: 10px 0 20px;">
+  모든 버그 발견 및 수정은 Claude AI (claude.ai/code) 와의 대화형 코드 리뷰를 통해 이루어졌습니다. | v6.2 업데이트
+</div>
+
+</body>
+</html>

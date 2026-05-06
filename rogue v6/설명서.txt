@@ -1,0 +1,296 @@
+
+╔══════════════════════════════════════════════════════════════════╗
+║         30 FLOORS OF PYTHON  —  코드 구조 설명서  (v6.1)         ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  텍스트 기반 로그라이크 덱빌딩 게임
+  Python / rich 라이브러리 / 선택적 OpenAI 내레이션
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  전체 아키텍처
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  main.py
+    └─ world.py          (층 이벤트 결정 / 상점 / 사건)
+         ├─ combat.py    (전투 진행 — 카드 사용, 몬스터 행동)
+         │    ├─ player.py    (플레이어 상태 관리)
+         │    └─ assets.py    (카드 / 몬스터 / 유물 데이터)
+         └─ ai_manager.py (AI 내레이션 — 없어도 실행 가능)
+
+  의존성 방향: 위 → 아래 (단방향)
+  하위 모듈이 상위를 import 하지 않아 순환 참조 없음
+
+  파일 수: 7개 (v6에서 config.py → ai_manager.py로 통합 후 삭제)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. assets.py  —  데이터 정의 계층
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [ 핵심 로직 1 ]  딕셔너리 기반 데이터 모델 (Data-driven Design)
+
+    CARDS = {
+        "강타":     {"class": "전사", "cost": 1, "damage_mult": 1.5, ...},
+        "번개화살": {"class": "마법사", "effect": "stun", ...},
+    }
+
+  ▸ 새 카드/몬스터/유물 추가 시 딕셔너리 한 줄만 추가하면 됨
+    전투 엔진(combat.py)은 전혀 수정할 필요 없음.
+
+  [ 핵심 로직 2 ]  몬스터 스케일링
+
+    def get_monster(name, floor):
+        scale = 1 + (floor * 0.1)
+        base["hp"]  = int(base["base_hp"]  * scale)   # HP: 층당 10% 증가
+        base["atk"] = int(base["base_atk"] * scale)   # ATK: 층당 10% 증가
+        base["spd"] = base["base_spd"]                 # SPD: 고정 (v6.1 변경)
+
+  ▸ deepcopy를 쓰는 이유
+    MONSTERS는 원본 템플릿. deepcopy 없이 수정하면
+    같은 적을 두 번 만날 때 이미 깎인 HP가 적용됨.
+
+  ▸ SPD 고정 이유 (v6.1)
+    기존엔 SPD도 층당 5% 증가해 10층 이후 거의 모든 몬스터가
+    플레이어보다 빠른 밸런스 문제가 있었음.
+    보스와 동일하게 base_spd 고정값 사용으로 변경.
+
+  [ 핵심 로직 3 ]  공용 카드는 이벤트로만 획득
+
+    공용 카드 4종(마나 회복, 긴급 교대, 집중, 해독제)은
+    class = "공용"으로 분류되어 전투 보상에 등장하지 않음.
+    각각 특정 이벤트(약초상/수도승/비밀 통로/마력의 샘)에서만 획득.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  2. player.py  —  플레이어 상태 관리
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [ 핵심 로직 1 ]  전방 / 후방 에너지 시스템
+
+    def reset_energy(self):
+        front['current_energy'] = front['mp'] + bonus   # 매 턴 완전 리셋
+        if back['current_hp'] <= 0:
+            back['current_energy'] = 0                  # 사망 시 매 턴 0 유지 (v6.1)
+        else:
+            back['current_energy'] = min(cap, back['current_energy'] + 1)  # +1 충전
+
+  ▸ 후방이 사망 중이면 에너지를 0으로 유지하는 이유 (v6.1)
+    힐로 부활시켰을 때 사망 전 쌓인 에너지를 그대로 가지고
+    복귀하는 과충전 문제를 완전히 차단.
+
+  ▸ 과다충전 상한이 mp × 2인 이유
+    무한 비축 방지. 너무 오래 후방에 두면 낭비.
+
+  [ 핵심 로직 2 ]  draw_cards  vs  draw_cards_add
+
+    draw_cards     → 기존 손패를 버리고 새로 드로우 (턴 시작 / 스왑)
+    draw_cards_add → 손패를 유지한 채 추가 드로우 (집중 카드 전용)
+
+  ▸ 두 함수를 나눈 이유
+    목적이 완전히 달라서 같은 함수에 플래그로 합치면 헷갈림.
+
+  [ 핵심 로직 3 ]  유물 합성 자동 감지
+
+    def _check_synthesis(self):
+        if mat1 in relic_names and mat2 in relic_names:
+            # 두 유물 제거 후 합성 결과 추가
+            self._apply_relic_stats(result['effect'])  # v6.1: 헬퍼 함수
+            self._check_synthesis()   # 재귀 — 연쇄 합성 대응
+            return
+
+  ▸ _apply_relic_stats() 헬퍼 함수 (v6.1)
+    add_relic()과 _check_synthesis() 두 곳에서 동일한
+    hp/atk/spd/mp 적용 로직을 중복으로 갖고 있었음. 헬퍼로 통합.
+
+  [ 핵심 로직 4 ]  DYNAMIC_KEYS
+
+    DYNAMIC_KEYS = ('bonus_energy', 'poison_start', 'hp_drain',
+                    'duration_bonus', 'burn_start')
+
+  ▸ 이 키들은 즉시 스탯에 반영 안 하는 이유
+    전투 중 매 턴 player.relics를 순회해서 실시간 계산하는 방식.
+    add_relic() 시점에 반영하면 전투 간 중복 적용됨.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. combat.py  —  전투 엔진
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [ 핵심 로직 1 ]  선공 결정 시스템
+
+    if current_action == "quick":     monster_first = True   # 패턴 기반 선제
+    elif monster['spd'] > active['spd']:  monster_first = True   # 속도 비교
+    elif monster['spd'] == active['spd']: 플레이어 선공 (동점 우선)
+
+  ▸ SPD는 고정값이라 유물 투자로 역전 가능 (v6.1)
+    몬스터 SPD가 층수에 비례해 올라가지 않으므로
+    SPD 유물을 모으면 후반에도 선공 유지 가능.
+
+  [ 핵심 로직 2 ]  후방 캐릭터 상태이상 처리 (v6.1 버그 수정)
+
+    back_char = player.party[1 - player.active_index]  # 먼저 저장!
+    process_turn_statuses(player.active_char)
+    if not _check_player_alive(player): return False
+    process_turn_statuses(back_char)   # 후방도 처리
+
+  ▸ back_char를 미리 저장하는 이유
+    전방 캐릭터 사망 → 스왑 발생 시 active_index가 바뀜.
+    스왑 후 계산하면 원래 후방이 아닌 다른 대상을 처리할 수 있음.
+
+  [ 핵심 로직 3 ]  긴급 스왑 후 카드 드로우 (v6 버그 수정)
+
+    prev_index = player.active_index
+    _monster_turn_logic(...)
+    if not _check_player_alive(player): return False
+    if player.active_index != prev_index:          # 스왑 감지
+        player.draw_cards(player.active_char, 4)   # 새 전방에 카드 드로우
+
+  ▸ 왜 필요한가
+    몬스터 선공으로 전방이 죽으면 후방으로 긴급 스왑.
+    이때 새 전방 캐릭터의 손패는 []이라 카드 사용 불가 상태가 됨.
+    이 라인이 없으면 "턴 종료" 버튼만 활성화되는 조작 불능 발생.
+
+  [ 핵심 로직 4 ]  side_effects 반환 패턴
+
+    def _execute_card_effects(...):
+        side_effects = {}
+        elif effect == 'swap_free':
+            side_effects['swap_free'] = True
+        return side_effects
+
+  ▸ 왜 여기서 직접 스왑 안 했나
+    swap_used 플래그는 _player_turn_logic 스코프 변수.
+    함수가 자기 책임 밖의 상태를 건드리면 단일 책임 원칙 위반.
+    → 딕셔너리로 상위 함수에 결과를 위임.
+
+  [ 핵심 로직 5 ]  상태이상 처리 분리
+
+    def process_turn_statuses(entity):
+        if status == 'stun':
+            continue          # stun은 행동 시 소비 — 여기서 처리 안 함
+        if status == 'burn':
+            entity['hp'] -= 5
+        elif status == 'poison':
+            entity['hp'] -= turns   # 스택 수 = 데미지
+
+  ▸ stun을 여기서 처리하지 않는 이유
+    burn / poison  →  "턴 종료 시" 발동
+    stun           →  "행동 시" 소비  (보스 면역 등 분기 포함)
+    섞으면 타이밍 버그 발생.
+
+  ▸ poison 데미지 = 현재 스택 수인 이유
+    스택이 쌓일수록 초반이 강하고 시간이 지나면 약해지는
+    독 특유의 감쇠 패턴 재현.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  4. world.py  —  층 생성 및 이벤트 처리
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [ 핵심 로직 1 ]  상점 생성 알고리즘
+
+    확정 상점: 1층 (시작) / 14층 (보스 전) / 16층 (보스 후) / 29층
+    랜덤 상점: 이전 상점으로부터 3층 이상 + 23% 확률
+
+    owned_names = {r['name'] for r in player.relics}
+    shop_relics = assets.get_stage_relics(stage, exclude=owned_names)  # v6
+
+  ▸ 소유 유물 제외 이유 (v6)
+    이미 가진 유물이 상점에 다시 떠서 슬롯을 낭비하던 문제 해결.
+
+  [ 핵심 로직 2 ]  _apply_effect 다중 if 구조
+
+    def _apply_effect(player, effect):
+        if 'gold'     in effect: player.gold += effect['gold']  # 항상 적용 (v6.1)
+        if 'party_hp' in effect:
+            chance = effect.get('chance', 1.0)
+            if random.random() < chance: ...  # 함정만 확률 적용
+        if 'gamble'   in effect: ...
+        if 'give_card' in effect: ...
+
+  ▸ elif가 아닌 if를 연속으로 쓰는 이유
+    하나의 효과 딕셔너리가 여러 키를 동시에 가질 수 있음.
+    elif면 두 번째 효과가 무시됨.
+
+  ▸ gold에 chance 적용 안 하는 이유 (v6.1 수정)
+    "50G 획득 / 30% 확률로 함정" 구조에서
+    기존엔 골드에도 30% chance가 적용되어 70% 확률로 빈손이었음.
+    골드는 항상 지급, 함정(party_hp)만 확률 적용으로 수정.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5. ai_manager.py  —  AI 내레이션 (선택적 기능)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [ 핵심 로직 ]  Graceful Degradation 패턴
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        AI_AVAILABLE = True
+    except Exception as e:
+        AI_AVAILABLE = False        # API 없어도 게임 정상 실행
+
+    def get_battle_intro(...):
+        return _call_api(prompt) or _fallback("battle")
+        #                        ↑ API 실패 시 fallback으로 자동 전환
+
+  ▸ API 전환 이력
+    v5: Gemini (google.generativeai)
+    v6: google.genai (신 SDK) 시도 → 할당량 문제로 OpenAI 전환
+    v6.1: OpenAI gpt-4o-mini 사용 (pip install openai)
+
+  ▸ config.py 통합 (v6.1)
+    기존 config.py는 ai_manager.py에서만 import됐음.
+    27번줄에 API 키와 모델명을 직접 관리.
+
+  ▸ AI 내레이션 호출 지점
+    get_battle_intro()     → world.py handle_combat() (전투 시작)
+    get_event_narrative()  → world.py handle_random_event() (사건 결과)
+    get_narrative()        → 현재 미사용 (필요 시 main.py에서 호출)
+
+  ▸ 프롬프트 스타일 (v6.1)
+    "반드시 '~다'로 끝나는 한국어 서술체로" 제약 추가
+    예: "그림자가 길게 드리운다. 던전의 공기가 싸늘하게 변한다."
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │  API 있음  →  OpenAI가 스테이지 페르소나에 맞는 대사 생성   │
+  │  API 없음  →  미리 작성된 fallback 대사 중 랜덤 선택        │
+  │  fallback 출력 시 "[fallback]" 태그로 구분 가능             │
+  └─────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  6. 설계 원칙 요약
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ① Data-driven Design (데이터 주도 설계)
+     카드/몬스터/유물을 딕셔너리 데이터로 정의.
+     로직 수정 없이 콘텐츠만 추가/수정 가능.
+
+  ② Single Responsibility (단일 책임)
+     각 함수/파일이 하나의 역할만 담당.
+     side_effects 패턴으로 책임 경계를 명확히 유지.
+
+  ③ Graceful Degradation (점진적 저하)
+     AI 기능처럼 선택적 의존성은 try/except + fallback으로
+     기능 일부가 없어도 전체가 동작하도록 설계.
+
+  ④ 단방향 의존성
+     main → world → combat → player/assets 순서.
+     하위 모듈이 상위를 import 하지 않아 순환 참조 없음.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  실행 방법
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. pip install rich
+  2. python main.py
+
+  AI 내레이션 사용 시 (선택):
+  1. pip install openai
+  2. ai_manager.py 27번줄에 OpenAI API 키 입력
+
+╚══════════════════════════════════════════════════════════════════╝

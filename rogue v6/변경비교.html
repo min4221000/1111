@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>30 Floors 변경 비교 (v5 → v6)</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --card-bg: #111827;
+    --removed: #dc2626;
+    --removed-bg: rgba(220, 38, 38, 0.08);
+    --removed-border: rgba(220, 38, 38, 0.3);
+    --kept: #10b981;
+    --kept-bg: rgba(16, 185, 129, 0.08);
+    --kept-border: rgba(16, 185, 129, 0.3);
+    --changed: #f59e0b;
+    --changed-bg: rgba(245, 158, 11, 0.08);
+    --changed-border: rgba(245, 158, 11, 0.3);
+    --added: #6366f1;
+    --added-bg: rgba(99, 102, 241, 0.08);
+    --added-border: rgba(99, 102, 241, 0.3);
+    --text: #e5e7eb;
+    --dim: #6b7280;
+    --accent: #f0c040;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    padding: 40px 32px;
+    min-height: 100vh;
+  }
+
+  /* ── 타이틀 ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+    position: relative;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+  }
+  .hero h1 .old { color: var(--dim); text-decoration: line-through; }
+  .hero h1 .arrow { color: var(--accent); margin: 0 12px; }
+  .hero h1 .new { color: var(--accent); }
+  .hero p { color: var(--dim); font-size: 0.95rem; }
+
+  /* ── 범례 ── */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+  }
+  .legend-dot.removed { background: var(--removed); }
+  .legend-dot.kept { background: var(--kept); }
+  .legend-dot.changed { background: var(--changed); }
+  .legend-dot.added { background: var(--added); }
+
+  /* ── 섹션 ── */
+  .section {
+    margin-bottom: 48px;
+  }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 900;
+    margin-bottom: 20px;
+    padding-left: 16px;
+    border-left: 4px solid var(--accent);
+    line-height: 1.4;
+  }
+
+  /* ── 비교 그리드 ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    align-items: stretch;
+  }
+  .compare-col {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #1f2937;
+  }
+  .compare-col.old { border-color: rgba(107, 114, 128, 0.3); }
+  .compare-col.new { border-color: var(--changed-border); }
+  .compare-col h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1f2937;
+  }
+  .compare-col.old h3 { color: var(--dim); }
+  .compare-col.new h3 { color: var(--accent); }
+
+  .compare-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: var(--accent);
+  }
+
+  /* ── 아이템 리스트 ── */
+  .item-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .item-list li {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .item-list li .badge {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  li.removed { background: var(--removed-bg); border-color: var(--removed-border); }
+  li.removed .badge { background: var(--removed); color: #fff; }
+  li.kept { background: var(--kept-bg); border-color: var(--kept-border); }
+  li.kept .badge { background: var(--kept); color: #fff; }
+  li.changed { background: var(--changed-bg); border-color: var(--changed-border); }
+  li.changed .badge { background: var(--changed); color: #000; }
+  li.added { background: var(--added-bg); border-color: var(--added-border); }
+  li.added .badge { background: var(--added); color: #fff; }
+
+  li.removed .text { color: #fca5a5; }
+  li.kept .text { color: #6ee7b7; }
+  li.changed .text { color: #fcd34d; }
+  li.added .text { color: #a5b4fc; }
+
+  /* ── 숫자 비교 카드 ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .label {
+    font-size: 0.78rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .stat-card .numbers {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .stat-card .old-num {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--dim);
+    text-decoration: line-through;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stat-card .arrow-sm {
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+  .stat-card .new-num {
+    font-size: 2.2rem;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stat-card .new-num.down { color: var(--removed); }
+  .stat-card .new-num.up { color: var(--added); }
+  .stat-card .new-num.same { color: var(--kept); }
+
+  /* ── 플로우 차트 ── */
+  .flow-section {
+    margin-top: 12px;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid;
+  }
+  .flow-node.removed { background: var(--removed-bg); border-color: var(--removed-border); color: #fca5a5; text-decoration: line-through; }
+  .flow-node.kept { background: var(--kept-bg); border-color: var(--kept-border); color: #6ee7b7; }
+  .flow-node.changed { background: var(--changed-bg); border-color: var(--changed-border); color: #fcd34d; }
+  .flow-arrow { color: var(--dim); font-size: 0.9rem; }
+
+  /* ── 파일 구조 ── */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .file-card {
+    background: var(--card-bg);
+    border: 1.5px solid;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .file-card .fname {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .file-card .fdesc {
+    font-size: 0.75rem;
+    color: var(--dim);
+    line-height: 1.4;
+  }
+  .file-card.kept { border-color: var(--kept-border); }
+  .file-card.kept .fname { color: var(--kept); }
+  .file-card.changed { border-color: var(--changed-border); }
+  .file-card.changed .fname { color: var(--changed); }
+
+  /* ── 반응형 ── */
+  @media (max-width: 800px) {
+    .compare-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .compare-arrow { transform: rotate(90deg); }
+    .hero h1 { font-size: 1.6rem; }
+    body { padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ HERO ════════ -->
+<div class="hero">
+  <h1>
+    <span class="old">100 FLOORS</span>
+    <span class="arrow">→</span>
+    <span class="new">30 FLOORS</span>
+  </h1>
+  <p>전체 버전 변경 이력 — v5 원본 간소화 + v6 업데이트</p>
+</div>
+
+<!-- ════════ 범례 ════════ -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot removed"></div><span style="color:var(--removed)">삭제됨</span></div>
+  <div class="legend-item"><div class="legend-dot kept"></div><span style="color:var(--kept)">유지됨</span></div>
+  <div class="legend-item"><div class="legend-dot changed"></div><span style="color:var(--changed)">변경됨</span></div>
+  <div class="legend-item"><div class="legend-dot added"></div><span style="color:var(--added)">신규 추가</span></div>
+</div>
+
+<!-- ════════ 숫자 비교 ════════ -->
+<div class="section">
+  <div class="section-title">📊 핵심 수치 변화</div>
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">총 층수</div>
+      <div class="numbers">
+        <span class="old-num">100</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">30</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">스테이지</div>
+      <div class="numbers">
+        <span class="old-num">5</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">2</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">직업 수</div>
+      <div class="numbers">
+        <span class="old-num">5</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">2</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">보스 수</div>
+      <div class="numbers">
+        <span class="old-num">9</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">2</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">몬스터 종류</div>
+      <div class="numbers">
+        <span class="old-num">25+</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">10</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">몬스터 패턴</div>
+      <div class="numbers">
+        <span class="old-num">30+</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">8</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">카드 수</div>
+      <div class="numbers">
+        <span class="old-num">30+</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">20</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">유물 수</div>
+      <div class="numbers">
+        <span class="old-num">30+</span>
+        <span class="arrow-sm">→</span>
+        <span class="new-num down">21</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 시스템 삭제/유지 비교 ════════ -->
+<div class="section">
+  <div class="section-title">⚙️ 시스템 변경 사항</div>
+  <div class="compare-grid">
+    <!-- 왼쪽: 원본 -->
+    <div class="compare-col old">
+      <h3>🏰 100층 원본</h3>
+      <ul class="item-list">
+        <li class="removed"><span class="badge">삭제</span><span class="text">직업 선택 시스템 (전사/마법사/도적/궁수/성직자)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">크리티컬 확률 (crt 스탯)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">피흡 (drain 패턴)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">저주 시스템 (curses + 정화)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">50층 각성 시스템</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">회피 (dodge)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">가시 (thorns)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">부활 유물 (revive_once)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">골드 배율 (gold_mult)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">주술력 (spell_power)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">전투 UI 탭 (전투/아이템/정보 탭 전환)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">카드 망각 저주 (forget_card_on_use)</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">교대 패널티 저주 (tag_penalty)</span></li>
+      </ul>
+    </div>
+
+    <div class="compare-arrow">→</div>
+
+    <!-- 오른쪽: 30층 -->
+    <div class="compare-col new">
+      <h3>⚔ 30층 간소화</h3>
+      <ul class="item-list">
+        <li class="kept"><span class="badge">유지</span><span class="text">전사 + 마법사 2인 고정 파티</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">덱빌딩 카드 시스템 (전투 보상)</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">전방/후방 스왑 시스템</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">유물 + 합성 시스템</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">AI 내레이션 (Gemini + fallback)</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">랜덤 이벤트 / 상점</span></li>
+        <li class="changed"><span class="badge">변경</span><span class="text">에너지: 누적 충전 → 슬더스식 매 턴 리셋</span></li>
+        <li class="changed"><span class="badge">변경</span><span class="text">후방 과다충전 시스템 (mp×2 상한)</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">상태이상: 취약/약화/중독</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">공용 카드 (마나회복/긴급교대/집중/해독제)</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">도박 이벤트 / 스탯 도박 이벤트</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">몬스터 개별 대사 (speech)</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">카드 지급 이벤트 (give_card)</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 에너지 시스템 ════════ -->
+<div class="section">
+  <div class="section-title">⚡ 에너지 시스템 변경</div>
+  <div class="compare-grid">
+    <div class="compare-col old">
+      <h3>원본 (누적 방식)</h3>
+      <ul class="item-list">
+        <li class="removed"><span class="badge">이전</span><span class="text">근접 직업: 턴당 EN +1 충전</span></li>
+        <li class="removed"><span class="badge">이전</span><span class="text">원거리 직업: 턴당 EN +2 충전</span></li>
+        <li class="removed"><span class="badge">이전</span><span class="text">평타로 EN 추가 획득</span></li>
+        <li class="removed"><span class="badge">이전</span><span class="text">에너지가 누적되어 큰 스킬 사용까지 대기</span></li>
+      </ul>
+    </div>
+    <div class="compare-arrow">→</div>
+    <div class="compare-col new">
+      <h3>30층 (슬더스식 리셋)</h3>
+      <ul class="item-list">
+        <li class="changed"><span class="badge">변경</span><span class="text">전방: 매 턴 EN을 mp 값으로 완전 리셋</span></li>
+        <li class="changed"><span class="badge">변경</span><span class="text">전사 mp=3, 마법사 mp=4</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">후방: 매 턴 EN +1 충전 (mp×2 상한)</span></li>
+        <li class="added"><span class="badge">추가</span><span class="text">bonus_energy 유물로 추가 EN 지급</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 보스 배치 ════════ -->
+<div class="section">
+  <div class="section-title">👾 보스 배치 변경</div>
+  <div class="flow-section">
+    <p style="color:var(--dim); font-size:0.8rem; margin-bottom:10px;">원본 (9회 보스전)</p>
+    <div class="flow-row">
+      <span class="flow-node removed">10층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">20층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">30층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">40층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">50층 각성</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">60층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">70층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">80층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">90층</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node removed">100층</span>
+    </div>
+    <p style="color:var(--accent); font-size:0.8rem; margin: 16px 0 10px;">30층 간소화 (2회 보스전)</p>
+    <div class="flow-row">
+      <span class="flow-node kept">1층 상점</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node changed">14층 상점</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node changed" style="border-color:var(--removed-border); color:#fca5a5;">15층 숲의 군주</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node changed">16층 상점</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node changed">29층 상점</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node changed" style="border-color:var(--removed-border); color:#fca5a5;">30층 심연의 근원</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 직업 비교 ════════ -->
+<div class="section">
+  <div class="section-title">🧙 직업 변경</div>
+  <div class="compare-grid">
+    <div class="compare-col old">
+      <h3>원본 (5개 직업 선택)</h3>
+      <ul class="item-list">
+        <li class="kept"><span class="badge">유지</span><span class="text">전사 — HP 80 / ATK 15 / DEF 5 / mp 10</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">마법사 — HP 45 / ATK 20 / DEF 2 / mp 20</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">도적 — HP 55 / ATK 17 / CRT 25%</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">궁수 — 원거리 딜러</span></li>
+        <li class="removed"><span class="badge">삭제</span><span class="text">성직자 — 힐러/서포터</span></li>
+      </ul>
+    </div>
+    <div class="compare-arrow">→</div>
+    <div class="compare-col new">
+      <h3>30층 (고정 파티)</h3>
+      <ul class="item-list">
+        <li class="changed"><span class="badge">변경</span><span class="text">전사 — HP 90 / ATK 12 / mp 3 (매 턴 리셋)</span></li>
+        <li class="changed"><span class="badge">변경</span><span class="text">마법사 — HP 50 / ATK 14 / mp 4 (매 턴 리셋)</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">직업 선택 없음 — 자동 고정 파티</span></li>
+        <li class="kept"><span class="badge">유지</span><span class="text">defense 스탯 제거 → 피해 감소 카드로 대체</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 파일 구조 ════════ -->
+<div class="section">
+  <div class="section-title">📁 파일 구조</div>
+  <div class="file-grid">
+    <div class="file-card kept">
+      <div class="fname">main.py</div>
+      <div class="fdesc">게임 루프<br>100→30 루프 변경</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">combat.py</div>
+      <div class="fdesc">전투 엔진<br>탭 UI 제거, 선공 시스템 추가</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">player.py</div>
+      <div class="fdesc">플레이어 상태<br>저주 제거, 에너지 리셋 추가</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">assets.py</div>
+      <div class="fdesc">게임 데이터<br>대폭 축소 + 신규 콘텐츠</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">world.py</div>
+      <div class="fdesc">층 이벤트<br>각성 삭제, 도박 이벤트 추가</div>
+    </div>
+    <div class="file-card kept">
+      <div class="fname">visuals.py</div>
+      <div class="fdesc">UI 렌더링<br>변경 최소</div>
+    </div>
+    <div class="file-card kept">
+      <div class="fname">ai_manager.py</div>
+      <div class="fdesc">AI 내레이션<br>페르소나 5→2 축소</div>
+    </div>
+    <div class="file-card kept">
+      <div class="fname">config.py</div>
+      <div class="fdesc">API 설정<br>변경 없음</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ v5 → v6 업데이트 ════════ -->
+<div class="section" style="margin-top:64px;">
+  <div class="section-title" style="border-color:#10b981;">
+    🆕 v5 → v6 업데이트 변경 사항
+  </div>
+
+  <!-- 버그 수정 -->
+  <p style="color:var(--dim); font-size:0.82rem; margin-bottom:12px; letter-spacing:1px;">BUG FIXES</p>
+  <ul class="item-list" style="margin-bottom:28px;">
+    <li class="added"><span class="badge">수정</span><span class="text"><b>전투 즉시 사망 버그 (#08)</b> — 몬스터 선공으로 캐릭터 사망 시 자동 스왑 후 카드 사용 불가(조작 불능) → 스왑 감지 후 새 캐릭터에 카드 드로우 추가</span></li>
+    <li class="added"><span class="badge">수정</span><span class="text"><b>동점 SPD 메시지 오류 (#09)</b> — SPD가 같을 때 "내가 더 빠릅니다!" 표시 → "속도가 같습니다! 선공 우선"으로 수정</span></li>
+    <li class="added"><span class="badge">수정</span><span class="text"><b>상점 소유 유물 중복 표시 (#12)</b> — 이미 보유한 유물이 상점에 재등장 → 소유 목록 제외 처리</span></li>
+    <li class="added"><span class="badge">수정</span><span class="text"><b>파트너 사망 중 에너지 과충전 (#11)</b> — 사망한 후방 캐릭터의 에너지가 계속 충전됨 → current_hp > 0 조건 추가</span></li>
+    <li class="added"><span class="badge">수정</span><span class="text"><b>ai_manager.py 미연결 (#10)</b> — 완성된 함수 3개가 어디서도 호출 안 됨 → world.py에 import 및 호출 연결</span></li>
+    <li class="added"><span class="badge">수정</span><span class="text"><b>AI ping 테스트 할당량 낭비 (#13)</b> — 시작 시 ping 1회 무료 할당량 소모 → 제거, 오류 시 fallback 자동 처리</span></li>
+    <li class="added"><span class="badge">수정</span><span class="text"><b>AI 오류 원인 불투명 (#14)</b> — except pass로 묵살 → 403/404/429 오류별 진단 메시지 출력</span></li>
+  </ul>
+
+  <!-- 밸런스 조정 -->
+  <p style="color:var(--dim); font-size:0.82rem; margin-bottom:12px; letter-spacing:1px;">BALANCE</p>
+  <ul class="item-list" style="margin-bottom:28px;">
+    <li class="changed"><span class="badge">변경</span><span class="text"><b>마법사 HP</b> 50 → 60 (광역기 즉사 방지, ATK/SPD 우위에 맞는 생존성 보완)</span></li>
+    <li class="changed"><span class="badge">변경</span><span class="text"><b>전투 보상 골드 하한</b> 12G(15G×0.8) → 최소 20G 보장 (상점 물가 대비 경제 불균형 해소)</span></li>
+    <li class="changed"><span class="badge">변경</span><span class="text"><b>심연의 근원 패턴</b> 3턴["quick","dark_slash","aoe"] → 4턴["quick","dark_slash","normal","aoe"] (광역기 빈도 33% → 25%)</span></li>
+    <li class="changed"><span class="badge">변경</span><span class="text"><b>카드 보상</b> 전방 캐릭터 고정 → 생존 캐릭터 중 랜덤 지급</span></li>
+  </ul>
+
+  <!-- 신규 기능 -->
+  <p style="color:var(--dim); font-size:0.82rem; margin-bottom:12px; letter-spacing:1px;">NEW FEATURES</p>
+  <ul class="item-list">
+    <li class="added"><span class="badge">추가</span><span class="text"><b>몬스터 대사 출력</b> — assets.py에 정의된 speech 필드를 전투 시작 시 실제로 표시</span></li>
+    <li class="added"><span class="badge">추가</span><span class="text"><b>AI 전투 내레이션</b> — get_battle_intro() 연결, 전투 시작 시 등장 묘사 (API 없으면 fallback 자동)</span></li>
+    <li class="added"><span class="badge">추가</span><span class="text"><b>AI 사건 결과 묘사</b> — get_event_narrative() 연결, 사건 선택 후 결과 묘사</span></li>
+    <li class="added"><span class="badge">추가</span><span class="text"><b>상점 파티 현황 표시</b> — 상점 진입 시 HP(색상 구분) + 보유 유물 목록 상단 표시</span></li>
+    <li class="added"><span class="badge">추가</span><span class="text"><b>상점 매진 표시</b> — 모든 유물 구매 후 "⚠️ 매진!" 메시지</span></li>
+    <li class="added"><span class="badge">추가</span><span class="text"><b>SPD 수치 표시</b> — 캐릭터 정보창(show_status)에 스피드 컬럼 추가</span></li>
+  </ul>
+</div>
+
+<!-- v6 파일 구조 -->
+<div class="section">
+  <div class="section-title" style="border-color:#10b981;">📁 v6 파일별 변경 요약</div>
+  <div class="file-grid">
+    <div class="file-card changed">
+      <div class="fname">main.py</div>
+      <div class="fdesc">bare print/input → console 통일</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">combat.py</div>
+      <div class="fdesc">긴급스왑 카드드로우 버그 수정<br>동점 SPD 메시지 수정<br>카드보상 랜덤화<br>골드 최소 20G<br>후방 상태이상 틱 추가</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">player.py</div>
+      <div class="fdesc">사망 시 에너지 0 유지 (과충전 완전 차단)<br>SPD 컬럼 추가<br>_apply_relic_stats() 헬퍼 추가<br>HP 색상 기준 통일</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">assets.py</div>
+      <div class="fdesc">마법사 HP 50→60<br>심연의 근원 패턴 4턴<br>몬스터 SPD 스케일링 제거<br>get_stage_relics() exclude 파라미터<br>get_monster_speech() 데드코드 제거</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">world.py</div>
+      <div class="fdesc">ai_manager 연결<br>몬스터 대사+AI내레이션 출력<br>상점 파티현황+매진표시<br>chance 버그 수정 (골드 항상 지급)<br>HP 색상 기준 통일</div>
+    </div>
+    <div class="file-card kept">
+      <div class="fname">visuals.py</div>
+      <div class="fdesc">변경 없음</div>
+    </div>
+    <div class="file-card changed">
+      <div class="fname">ai_manager.py</div>
+      <div class="fdesc">config.py 통합 (파일 삭제)<br>Gemini → OpenAI 전환<br>~다 서술체 프롬프트<br>fallback 표시 추가<br>ping 테스트 제거</div>
+    </div>
+    <div class="file-card removed" style="border-color:var(--removed-border);">
+      <div class="fname" style="color:var(--removed); text-decoration:line-through;">config.py</div>
+      <div class="fdesc">ai_manager.py로 통합 후 삭제</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

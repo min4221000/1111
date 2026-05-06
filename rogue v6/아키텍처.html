@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>30 Floors of Python — 아키텍처</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    padding: 40px 30px;
+    min-width: 900px;
+  }
+
+  /* ── 타이틀 ── */
+  .title-bar {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .title-bar h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #f0c040;
+  }
+  .title-bar p {
+    color: #8b949e;
+    margin-top: 6px;
+    font-size: 0.9rem;
+  }
+
+  /* ── 레이어 행 ── */
+  .layer {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 10px;
+    justify-content: center;
+  }
+  .layer-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    color: #8b949e;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    width: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .layer-content {
+    display: flex;
+    gap: 14px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── 파일 박스 ── */
+  .file-box {
+    border-radius: 10px;
+    padding: 16px 20px;
+    min-width: 170px;
+    border: 1.5px solid;
+    position: relative;
+  }
+  .file-box .filename {
+    font-family: 'Consolas', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .file-box .role {
+    font-size: 0.78rem;
+    color: #c9d1d9;
+    line-height: 1.5;
+  }
+  .file-box .tags {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .tag {
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-family: monospace;
+  }
+
+  /* 색상 테마 */
+  .c-entry   { background: #1a1200; border-color: #f0c040; }
+  .c-entry   .filename { color: #f0c040; }
+  .c-entry   .tag { background: #3d2e00; color: #f0c040; }
+
+  .c-world   { background: #001328; border-color: #3b82f6; }
+  .c-world   .filename { color: #60a5fa; }
+  .c-world   .tag { background: #0c2040; color: #60a5fa; }
+
+  .c-combat  { background: #1a0a0a; border-color: #ef4444; }
+  .c-combat  .filename { color: #f87171; }
+  .c-combat  .tag { background: #350a0a; color: #f87171; }
+
+  .c-player  { background: #12001f; border-color: #a855f7; }
+  .c-player  .filename { color: #c084fc; }
+  .c-player  .tag { background: #250040; color: #c084fc; }
+
+  .c-data    { background: #001a0f; border-color: #10b981; }
+  .c-data    .filename { color: #34d399; }
+  .c-data    .tag { background: #002810; color: #34d399; }
+
+  .c-opt     { background: #111111; border-color: #6b7280; }
+  .c-opt     .filename { color: #9ca3af; }
+  .c-opt     .tag { background: #1e1e1e; color: #9ca3af; }
+
+  .c-ui      { background: #001015; border-color: #06b6d4; }
+  .c-ui      .filename { color: #22d3ee; }
+  .c-ui      .tag { background: #002530; color: #22d3ee; }
+
+  /* ── 화살표 ── */
+  .arrow-row {
+    display: flex;
+    justify-content: center;
+    margin: 2px 0;
+    color: #30363d;
+    font-size: 1.2rem;
+    gap: 60px;
+  }
+  .arrow-row span { color: #444c56; }
+
+  /* ── 기술 스택 ── */
+  .tech-section {
+    margin-top: 38px;
+    text-align: center;
+  }
+  .tech-section h2 {
+    color: #8b949e;
+    font-size: 0.8rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .tech-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  .tech-card {
+    background: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 10px;
+    padding: 12px 20px;
+    min-width: 130px;
+    text-align: center;
+  }
+  .tech-card .tech-name {
+    font-family: monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .tech-card .tech-desc {
+    font-size: 0.7rem;
+    color: #8b949e;
+    line-height: 1.4;
+  }
+  .t-python  { border-color: #3b82f6; }  .t-python  .tech-name { color: #60a5fa; }
+  .t-rich    { border-color: #10b981; }  .t-rich    .tech-name { color: #34d399; }
+  .t-ai      { border-color: #a855f7; }  .t-ai      .tech-name { color: #c084fc; }
+  .t-pattern { border-color: #f59e0b; }  .t-pattern .tech-name { color: #fbbf24; }
+  .t-data    { border-color: #ef4444; }  .t-data    .tech-name { color: #f87171; }
+
+  /* ── 의존성 범례 ── */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.75rem;
+    color: #8b949e;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #21262d;
+    margin: 32px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- 타이틀 -->
+<div class="title-bar">
+  <h1>⚔ 30 FLOORS OF PYTHON</h1>
+  <p>파일 구조 &amp; 의존성 다이어그램  |  텍스트 기반 로그라이크 덱빌딩 게임</p>
+</div>
+
+<!-- ── Layer 1: 진입점 ── -->
+<div class="layer">
+  <div class="layer-label">진입점</div>
+  <div class="layer-content">
+    <div class="file-box c-entry">
+      <div class="filename">📄 main.py</div>
+      <div class="role">게임 루프 컨트롤러<br>층 진행 / 플레이어 입력 처리</div>
+      <div class="tags">
+        <span class="tag">while loop</span>
+        <span class="tag">floor 1~30</span>
+        <span class="tag">입력 분기</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row"><span>▼</span></div>
+
+<!-- ── Layer 2: 세계 ── -->
+<div class="layer">
+  <div class="layer-label">세계 / 이벤트</div>
+  <div class="layer-content">
+    <div class="file-box c-world">
+      <div class="filename">🌍 world.py</div>
+      <div class="role">층 이벤트 결정<br>상점 / 사건 / 전투 분기<br>효과 적용 (_apply_effect)</div>
+      <div class="tags">
+        <span class="tag">확정 상점 4개</span>
+        <span class="tag">23% 랜덤 상점</span>
+        <span class="tag">전역 상태 추적</span>
+      </div>
+    </div>
+    <div class="file-box c-ui">
+      <div class="filename">🎨 visuals.py</div>
+      <div class="role">UI 렌더링<br>헤더 / 애니메이션<br>화면 클리어</div>
+      <div class="tags">
+        <span class="tag">rich Panel</span>
+        <span class="tag">rich Text</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row"><span>▼</span><span style="opacity:0">▼</span></div>
+
+<!-- ── Layer 3: 전투 엔진 ── -->
+<div class="layer">
+  <div class="layer-label">전투 / 상태</div>
+  <div class="layer-content">
+    <div class="file-box c-combat">
+      <div class="filename">⚔ combat.py</div>
+      <div class="role">전투 메인 루프<br>카드 효과 실행<br>몬스터 AI 패턴<br>상태이상 처리</div>
+      <div class="tags">
+        <span class="tag">monster_first</span>
+        <span class="tag">side_effects 패턴</span>
+        <span class="tag">선공 결정</span>
+        <span class="tag">stun/burn/poison</span>
+      </div>
+    </div>
+    <div class="file-box c-player">
+      <div class="filename">🧙 player.py</div>
+      <div class="role">플레이어 상태 관리<br>에너지 시스템<br>덱 / 손패 관리<br>유물 합성 감지</div>
+      <div class="tags">
+        <span class="tag">전방/후방 에너지</span>
+        <span class="tag">overcharge</span>
+        <span class="tag">재귀 합성</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row"><span>▼</span><span style="opacity:0">▼</span></div>
+
+<!-- ── Layer 4: 데이터 ── -->
+<div class="layer">
+  <div class="layer-label">데이터 계층</div>
+  <div class="layer-content">
+    <div class="file-box c-data" style="min-width:400px">
+      <div class="filename">📦 assets.py</div>
+      <div class="role">
+        카드 · 몬스터 · 유물 · 사건 · 보스 — 모든 게임 데이터 정의<br>
+        헬퍼 함수: get_monster() / get_boss() / get_class()
+      </div>
+      <div class="tags">
+        <span class="tag">Dict 기반 데이터</span>
+        <span class="tag">deepcopy 원본 보호</span>
+        <span class="tag">스케일링 공식</span>
+        <span class="tag">Data-driven Design</span>
+        <span class="tag">16 카드</span>
+        <span class="tag">10 몬스터</span>
+        <span class="tag">21 유물</span>
+        <span class="tag">12 사건</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── 선택적 모듈 ── -->
+<div class="layer">
+  <div class="layer-label">선택 모듈</div>
+  <div class="layer-content">
+    <div class="file-box c-opt">
+      <div class="filename">🤖 ai_manager.py</div>
+      <div class="role">OpenAI 내레이션<br>API 없으면 fallback 대사<br>Graceful Degradation</div>
+      <div class="tags">
+        <span class="tag">try/except</span>
+        <span class="tag">or fallback</span>
+        <span class="tag">선택적 기능</span>
+        <span class="tag">gpt-4o-mini</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- 기술 스택 -->
+<div class="tech-section">
+  <h2>기술 스택</h2>
+  <div class="tech-grid">
+    <div class="tech-card t-python">
+      <div class="tech-name">Python 3</div>
+      <div class="tech-desc">dict / class / deepcopy<br>random / os / time</div>
+    </div>
+    <div class="tech-card t-rich">
+      <div class="tech-name">rich</div>
+      <div class="tech-desc">Console / Panel / Table<br>터미널 컬러 UI</div>
+    </div>
+    <div class="tech-card t-ai">
+      <div class="tech-name">OpenAI</div>
+      <div class="tech-desc">gpt-4o-mini<br>선택적 내레이션</div>
+    </div>
+    <div class="tech-card t-data">
+      <div class="tech-name">Data-driven</div>
+      <div class="tech-desc">데이터가 로직 구동<br>콘텐츠 ↔ 엔진 분리</div>
+    </div>
+    <div class="tech-card t-pattern">
+      <div class="tech-name">OOP</div>
+      <div class="tech-desc">Player 클래스<br>상태 캡슐화</div>
+    </div>
+  </div>
+</div>
+
+<!-- 범례 -->
+<div class="legend" style="margin-top:24px">
+  <div class="legend-item"><div class="legend-dot" style="background:#f0c040"></div> 진입점</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> 세계/이벤트</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> 전투 엔진</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> 플레이어 상태</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> 데이터 계층</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> UI</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div> 선택 모듈</div>
+</div>
+
+</body>
+</html>
