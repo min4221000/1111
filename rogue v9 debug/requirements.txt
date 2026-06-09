@@ -1,6 +1,0 @@
-rich
-rich-pixels
-
-# AI 내레이션 기능 사용 시 (없어도 게임 실행 가능)
-openai
-
